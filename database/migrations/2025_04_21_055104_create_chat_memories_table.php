@@ -11,12 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('jlpt_words', function (Blueprint $table) {
+        Schema::create('chat_memories', function (Blueprint $table) {
             $table->id();
-            $table->string('word');
-            $table->string('kana')->nullable();
-            $table->text('meaning_ko');
-            $table->json('levels');
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->string('summary');
             $table->timestamps();
         });
     }
@@ -26,6 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('jlpt_words');
+        Schema::dropIfExists('chat_memories');
     }
 };

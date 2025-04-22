@@ -1,5 +1,4 @@
 <?php
-// 📄 Laravel Artisan 캡명: JLPT 단어 + DeepL 번역 생성 (레벨 범위 그룹)
 
 namespace App\Console\Commands;
 
@@ -19,29 +18,26 @@ class ImportJlptWords extends Command
         $url = 'https://raw.githubusercontent.com/elzup/jlpt-word-list/master/out/all.csv';
         $csv = file_get_contents($url);
         $rows = array_map('str_getcsv', explode("\n", $csv));
-        $header = array_shift($rows); // [expression, reading, meaning, tags]
+        $header = array_shift($rows);
 
         foreach ($rows as $i => $row) {
             if ($i < $startAt) continue;
             if (count($row) < 4) continue;
 
-            $word = $row[0];          // 일본어 단어
-            $kana = $row[1];          // 읽기 (히라가나)
-            $meaning_en = $row[2];    // 영어 뜻 (DeepL 번역에 사용)
-            $levels = array_slice($row, 3); // JLPT 태그들
+            $word = $row[0];
+            $kana = $row[1];
+            $meaning_en = $row[2];
+            $levels = array_slice($row, 3);
 
             $levelList = $this->extractJlptLevels($levels);
             if (empty($levelList)) continue;
 
-            // 🔁 DeepL 번역 - 영어에서 한국어로
             $meaning_ko = $this->translateToKorean($meaning_en);
 
-            // 세미콜론을 쉼표로 교체
             if ($meaning_ko !== null) {
                 $meaning_ko = str_replace(';', ',', $meaning_ko);
             }
 
-            // 📅 중복 확인 후 저장 또는 업데이트
             $existing = JlptWord::where('word', $word)->first();
 
             if ($existing) {
@@ -62,7 +58,7 @@ class ImportJlptWords extends Command
                 $this->line("[$i] 저장됨: $word (" . implode(',', $levelList) . ") => $meaning_ko");
             }
 
-            usleep(300000); // 0.3초 디레이 (DeepL 요금 보호)
+            usleep(300000);
         }
 
         $this->info('🎉 모든 단어 저장 완료');
@@ -80,7 +76,6 @@ class ImportJlptWords extends Command
 
         $translated = $response['translations'][0]['text'] ?? null;
 
-        // 번역 결과가 영어 원문과 같은 경우 null 처리
         if (strcasecmp(trim($translated), trim($text)) === 0) {
             return null;
         }
@@ -101,13 +96,3 @@ class ImportJlptWords extends Command
         return array_unique($levels);
     }
 }
-
-/*
-○ 예시:
-JlptWord {
-  word: "冷蔵庫",
-  kana: "れいぞうこ",
-  meaning_ko: "냉장고",
-  levels: ["N5", "N4"]
-}
-*/

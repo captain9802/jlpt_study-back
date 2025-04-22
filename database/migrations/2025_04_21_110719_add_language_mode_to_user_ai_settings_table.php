@@ -11,13 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('jlpt_words', function (Blueprint $table) {
-            $table->id();
-            $table->string('word');
-            $table->string('kana')->nullable();
-            $table->text('meaning_ko');
-            $table->json('levels');
-            $table->timestamps();
+        Schema::table('user_ai_settings', function (Blueprint $table) {
+            $table->string('language_mode', 10)->default('mix');
         });
     }
 
@@ -26,6 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('jlpt_words');
+        Schema::table('user_ai_settings', function (Blueprint $table) {
+            //
+        });
     }
 };

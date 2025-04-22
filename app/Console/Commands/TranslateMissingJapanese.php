@@ -27,7 +27,7 @@ class TranslateMissingJapanese extends Command
                 $this->line("[$i] 번역 실패 또는 무의미: {$word->word}");
             }
 
-            usleep(300000); // 딜레이로 요청 제한 방지
+            usleep(300000);
         }
 
         $this->info('✅ 누락된 한국어 뜻 번역 완료');
@@ -45,7 +45,6 @@ class TranslateMissingJapanese extends Command
 
         $translated = $response['translations'][0]['text'] ?? null;
 
-        // 원문과 같으면 null 처리
         if (strcasecmp(trim($translated), trim($text)) === 0) {
             return null;
         }

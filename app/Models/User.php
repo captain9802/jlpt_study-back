@@ -9,7 +9,7 @@ use Tymon\JWTAuth\Contracts\JWTSubject;
 
 class User extends Authenticatable implements JWTSubject
 {
-    use HasFactory, Notifiable; // ✅ 이렇게 한 줄에 합치거나 따로 써도 됨
+    use HasFactory, Notifiable;
 
     protected $fillable = [
         'email',
