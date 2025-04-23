@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AiPrompt;
 use App\Models\User;
 use App\Models\UserAiSetting;
+use App\Services\AiPromptGenerator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Hash;
@@ -83,6 +85,14 @@ class UserController extends Controller
 
         $setting->language_mode = $request->input('language_mode');
         $setting->save();
+
+        $existingPrompt = AiPrompt::where('user_id', $user->id)
+            ->where('language', $setting->language_mode)
+            ->first();
+
+        if (!$existingPrompt) {
+            AiPromptGenerator::generate($setting->language_mode, $setting);
+        }
 
         return response()->json(['message' => '언어 모드가 저장되었습니다.', 'data' => $setting]);
     }
