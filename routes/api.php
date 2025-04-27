@@ -26,9 +26,9 @@ Route::middleware([\Illuminate\Http\Middleware\HandleCors::class])
             Route::put('/favorites/lists/{id}', [FavoriteListController::class, 'update']);
             Route::delete('/favorites/lists/{id}', [FavoriteListController::class, 'destroy']);
 
+            Route::get('/favorites/words', [FavoriteController::class, 'getFavoriteWords']);
             Route::get('/favorites/words/{listId}', [FavoriteController::class, 'index']);
-            Route::post('/favorites/words', [FavoriteController::class, 'store']);
-            Route::delete('/favorites/words/{id}', [FavoriteController::class, 'destroy']);
+            Route::post('/favorites/words/toggle', [FavoriteController::class, 'toggleFavorite']);
         });
     });
 

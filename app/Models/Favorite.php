@@ -8,6 +8,8 @@ class Favorite extends Model
 {
     use HasFactory;
 
+    protected $table = 'favorite_words';
+
     protected $fillable = [
         'list_id',
         'text',
