@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 use App\Models\FavoriteList;
+use App\Models\FavoriteGrammarList;
 use Illuminate\Http\Request;
 
 class FavoriteListController extends Controller
@@ -40,5 +41,56 @@ class FavoriteListController extends Controller
 
         $list->delete();
         return response()->json(['message' => '삭제됨']);
+    }
+
+    public function getGrammarLists(Request $request)
+    {
+        $user = $request->user();
+        file_put_contents('php://stderr', "1111111111111111111\n");
+
+        $lists = FavoriteGrammarList::where('user_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+        file_put_contents('php://stderr', "222222222222222\n");
+
+        return response()->json($lists);
+    }
+
+    public function storeGrammarList(Request $request)
+    {
+        $data = $request->validate([
+            'title' => 'required|string|max:255',
+            'color' => 'nullable|string|max:20',
+        ]);
+
+        $list = FavoriteGrammarList::create([
+            'user_id' => $request->user()->id,
+            'title' => $data['title'],
+            'color' => $data['color'] ?? '#ffffff',
+        ]);
+
+        return response()->json($list);
+    }
+
+    public function updateGrammarList(Request $request, $id)
+    {
+        $list = FavoriteGrammarList::where('id', $id)->where('user_id', $request->user()->id)->firstOrFail();
+
+        $data = $request->validate([
+            'title' => 'required|string|max:255',
+            'color' => 'nullable|string|max:20',
+        ]);
+
+        $list->update($data);
+
+        return response()->json($list);
+    }
+
+    public function deleteGrammarList(Request $request, $id)
+    {
+        $list = FavoriteGrammarList::where('id', $id)->where('user_id', $request->user()->id)->firstOrFail();
+        $list->delete();
+
+        return response()->json(['success' => true]);
     }
 }

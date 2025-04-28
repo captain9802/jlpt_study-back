@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 use App\Models\Favorite;
+use App\Models\FavoriteGrammarList;
 use Illuminate\Http\Request;
 
 class FavoriteController extends Controller
@@ -58,4 +59,20 @@ class FavoriteController extends Controller
         }
     }
 
+    public function getFavoriteGrammars(Request $request, $listId)
+    {
+        $user = $request->user();
+        file_put_contents('php://stderr', "11111111111111\n");
+
+        $grammarList = FavoriteGrammarList::with([
+            'grammars.examples',
+            'grammars.quizzes.choices'
+        ])
+            ->where('id', $listId)
+            ->where('user_id', $user->id)
+            ->firstOrFail();
+        file_put_contents('php://stderr', "22222222222222222\n");
+
+        return response()->json($grammarList->grammars);
+    }
 }

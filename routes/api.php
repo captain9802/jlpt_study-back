@@ -29,6 +29,14 @@ Route::middleware([\Illuminate\Http\Middleware\HandleCors::class])
             Route::get('/favorites/words', [FavoriteController::class, 'getFavoriteWords']);
             Route::get('/favorites/words/{listId}', [FavoriteController::class, 'index']);
             Route::post('/favorites/words/toggle', [FavoriteController::class, 'toggleFavorite']);
+
+            Route::get('/favorites/grammar-lists', [FavoriteListController::class, 'getGrammarLists']);
+            Route::post('/favorites/grammar-lists', [FavoriteListController::class, 'storeGrammarList']);
+            Route::put('/favorites/grammar-lists/{id}', [FavoriteListController::class, 'updateGrammarList']);
+            Route::delete('/favorites/grammar-lists/{id}', [FavoriteListController::class, 'deleteGrammarList']);
+
+            Route::get('/favorites/grammars/{list_id}', [FavoriteController::class, 'getFavoriteGrammars']);
+
         });
     });
 
