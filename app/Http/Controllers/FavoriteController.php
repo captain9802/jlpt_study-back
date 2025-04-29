@@ -2,8 +2,13 @@
 
 namespace App\Http\Controllers;
 use App\Models\Favorite;
+use App\Models\FavoriteGrammar;
 use App\Models\FavoriteGrammarList;
+use App\Models\GrammarChoice;
+use App\Models\GrammarExample;
+use App\Models\GrammarQuiz;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 
 class FavoriteController extends Controller
 {
@@ -62,7 +67,7 @@ class FavoriteController extends Controller
     public function getFavoriteGrammars(Request $request, $listId)
     {
         $user = $request->user();
-        file_put_contents('php://stderr', "11111111111111\n");
+        file_put_contents('php://stderr', "111111111111as11\n");
 
         $grammarList = FavoriteGrammarList::with([
             'grammars.examples',
@@ -75,4 +80,155 @@ class FavoriteController extends Controller
 
         return response()->json($grammarList->grammars);
     }
+
+    public function getAllGrammarTexts(Request $request)
+    {
+        $user = $request->user();
+
+        $grammars = FavoriteGrammar::whereHas('grammarList', function ($query) use ($user) {
+            $query->where('user_id', $user->id);
+        })
+            ->pluck('grammar');
+
+        return response()->json($grammars);
+    }
+
+    public function toggleGrammarFavorite(Request $request)
+    {
+        $user = $request->user();
+        file_put_contents('php://stderr', "11111111111111111111\n");
+        file_put_contents('php://stderr', "0000000000000000\n");
+
+        $data = $request->validate([
+            'list_id' => 'nullable|integer',
+            'grammar' => 'required|string',
+            'meaning' => 'required|string',
+        ]);
+
+        $grammarText = is_array($data['grammar']) ? ($data['grammar']['text'] ?? '') : $data['grammar'];
+        $normalizedGrammar = preg_replace('/^〜/u', '', $grammarText);
+
+        file_put_contents('php://stderr', "grammar raw: " . print_r($data['grammar'], true) . "\n");
+        file_put_contents('php://stderr', "normalized: " . print_r($normalizedGrammar, true) . "\n");
+        file_put_contents('php://stderr', "??????????????????????????\n");
+
+
+        file_put_contents('php://stderr', "222222222222222222222\n");
+        $exists = FavoriteGrammar::when(isset($data['list_id']), function ($query) use ($data) {
+            return $query->where('list_id', $data['list_id']);
+        })
+            ->where('grammar', $normalizedGrammar)
+            ->first();
+
+        file_put_contents('php://stderr', "3333333333333333333\n");
+
+        if ($exists) {
+            $exists->delete();
+            return response()->json(['message' => '즐겨찾기에서 삭제되었습니다.']);
+        }
+        file_put_contents('php://stderr', "444444444444444444444\n");
+
+        // 새로 추가
+        $newGrammar = FavoriteGrammar::create([
+            'list_id' => $data['list_id'],
+            'grammar' => $data['grammar'],
+            'meaning' => $data['meaning'],
+        ]);
+        file_put_contents('php://stderr', "555555555555555555555555\n");
+
+        // GPT 호출해서 예시 + 퀴즈 생성
+        $gptResult = $this->generateGrammarData($data['grammar'], $data['meaning']);
+        file_put_contents('php://stderr', "6666666666666666666666\n");
+
+        if (!$gptResult) {
+            return response()->json(['message' => 'GPT 생성 실패'], 500);
+        }
+        file_put_contents('php://stderr', "777777777777777777777777\n");
+
+        // 1. 예시 저장
+        foreach ($gptResult['examples'] as $example) {
+            GrammarExample::create([
+                'grammar_id' => $newGrammar->id,
+                'ja' => $example['ja'],
+                'ko' => $example['ko'],
+            ]);
+        }
+        file_put_contents('php://stderr', "888888888888\n");
+
+        // 2. 퀴즈 저장
+        foreach ($gptResult['quizzes'] as $quizData) {
+            $quiz = GrammarQuiz::create([
+                'grammar_id' => $newGrammar->id,
+                'question' => $quizData['question'],
+                'translation' => $quizData['translation'],
+                'answer' => $quizData['answer'],
+            ]);
+            file_put_contents('php://stderr', "9999999999999999999999999\n");
+
+            foreach ($quizData['choices'] as $choice) {
+                GrammarChoice::create([
+                    'quiz_id' => $quiz->id,
+                    'text' => $choice['text'],
+                    'meaning' => $choice['meaning'],
+                    'is_correct' => $choice['is_correct'],
+                    'explanation' => $choice['explanation'],
+                ]);
+            }
+        }
+        return response()->json(['message' => '즐겨찾기에 추가되었습니다.']);
+    }
+
+    private function generateGrammarData($grammar, $meaning)
+    {
+        try {
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . env('OPENAI_API_KEY'),
+            ])->post('https://api.openai.com/v1/chat/completions', [
+                'model' => 'gpt-3.5-turbo',
+                'messages' => [
+                    [
+                        'role' => 'system',
+                        'content' => "너는 일본어 학습 AI야. 사용자에게 다음 형식으로 JSON만 응답해야 해. 설명 추가 금지.
+
+                    {
+                      \"examples\": [
+                        { \"ja\": \"...\", \"ko\": \"...\" },
+                        { \"ja\": \"...\", \"ko\": \"...\" },
+                        { \"ja\": \"...\", \"ko\": \"...\" }
+                      ],
+                      \"quizzes\": [
+                        {
+                          \"question\": \"...\",
+                          \"translation\": \"...\",
+                          \"answer\": \"...\",
+                          \"choices\": [
+                            { \"text\": \"...\", \"meaning\": \"...\", \"is_correct\": true, \"explanation\": \"...\" },
+                            { \"text\": \"...\", \"meaning\": \"...\", \"is_correct\": false, \"explanation\": \"...\" },
+                            { \"text\": \"...\", \"meaning\": \"...\", \"is_correct\": false, \"explanation\": \"...\" },
+                            { \"text\": \"...\", \"meaning\": \"...\", \"is_correct\": false, \"explanation\": \"...\" }
+                          ]
+                        },
+                        (3문제 생성)
+                      ]
+                    }"
+                    ],
+                    [
+                        'role' => 'user',
+                        'content' => "문법 표현: {$grammar} ({$meaning})"
+                    ]
+                ],
+                'temperature' => 0.3,
+            ]);
+
+            $content = $response->json('choices.0.message.content');
+
+            return json_decode($content, true);
+
+        } catch (\Exception $e) {
+            file_put_contents('php://stderr', "GPT 호출 실패: " . $e->getMessage() . "\n");
+            return null;
+        }
+    }
+
+
 }

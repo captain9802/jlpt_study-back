@@ -35,8 +35,9 @@ Route::middleware([\Illuminate\Http\Middleware\HandleCors::class])
             Route::put('/favorites/grammar-lists/{id}', [FavoriteListController::class, 'updateGrammarList']);
             Route::delete('/favorites/grammar-lists/{id}', [FavoriteListController::class, 'deleteGrammarList']);
 
+            Route::get('/favorites/grammars', [FavoriteController::class, 'getAllGrammarTexts']);
             Route::get('/favorites/grammars/{list_id}', [FavoriteController::class, 'getFavoriteGrammars']);
-
+            Route::post('/favorites/grammars/toggle', [FavoriteController::class, 'toggleGrammarFavorite']);
         });
     });
 
