@@ -4,6 +4,12 @@ namespace App\Http\Controllers;
 use App\Models\Favorite;
 use App\Models\FavoriteGrammar;
 use App\Models\FavoriteGrammarList;
+use App\Models\FavoriteSentence;
+use App\Models\FavoriteSentenceGrammar;
+use App\Models\FavoriteSentenceList;
+use App\Models\FavoriteSentenceQuiz;
+use App\Models\FavoriteSentenceQuizChoice;
+use App\Models\FavoriteSentenceWord;
 use App\Models\GrammarChoice;
 use App\Models\GrammarExample;
 use App\Models\GrammarQuiz;
@@ -230,5 +236,179 @@ class FavoriteController extends Controller
         }
     }
 
+    public function getFavoriteSentences($list_id, Request $request)
+    {
+        $user = $request->user();
+        file_put_contents('php://stderr', "11111111111111111111111111\n");
 
+            $sentences = FavoriteSentence::with(['words', 'grammar'])
+                ->where('list_id', $list_id)
+                ->whereHas('sentenceList', function ($q) use ($user) {
+                    $q->where('user_id', $user->id);
+                })
+                ->get();
+
+        file_put_contents('php://stderr', "222222222222222222222222\n");
+
+        $formatted = $sentences->map(function ($s) {
+            return [
+                'id' => $s->id,
+                'text' => $s->text,
+                'translation' => $s->translation,
+                'words' => $s->words->map(fn($w) => [
+                    'text' => $w->text,
+                    'meaning' => $w->meaning,
+                    'reading' => $w->reading,
+                ]),
+                'grammar' => $s->grammar->map(fn($g) => [
+                    'text' => $g->text,
+                    'meaning' => $g->meaning
+                ])
+            ];
+        });
+        file_put_contents('php://stderr', "33333333333333333333333333333333\n");
+
+        return response()->json($formatted);
+    }
+
+    public function getAllSentenceTexts(Request $request)
+    {
+        $user = $request->user();
+
+        $texts = FavoriteSentence::whereHas('sentenceList', function ($q) use ($user) {
+            $q->where('user_id', $user->id);
+        })
+            ->pluck('text');
+
+        return response()->json($texts);
+    }
+
+    public function toggleSentenceFavorite(Request $request)
+    {
+        $user = $request->user();
+
+        $data = $request->validate([
+            'list_id' => 'required|integer',
+            'text' => 'required|string',
+            'translation' => 'nullable|string',
+        ]);
+
+        // 기존에 있으면 삭제
+        $existing = FavoriteSentence::where('list_id', $data['list_id'])
+            ->where('text', $data['text'])
+            ->first();
+
+        if ($existing) {
+            $existing->delete();
+            return response()->json(['message' => '즐겨찾기에서 삭제되었습니다.']);
+        }
+
+        // GPT로 문장 구성 요청
+        $generated = $this->sendGptSentencePrompt($data['text']);
+        if (!$generated) {
+            return response()->json(['message' => 'GPT 응답 오류'], 500);
+        }
+
+        // 문장 저장
+        $sentence = FavoriteSentence::create([
+            'list_id' => $data['list_id'],
+            'text' => $generated['text'] ?? $data['text'],
+            'translation' => $generated['translation'] ?? ($data['translation'] ?? ''),
+        ]);
+
+        foreach ($generated['words'] ?? [] as $word) {
+            FavoriteSentenceWord::create([
+                'sentence_id' => $sentence->id,
+                'text' => $word['text'],
+                'reading' => $word['reading'] ?? '',
+                'meaning' => $word['meaning'] ?? '',
+            ]);
+        }
+
+        foreach ($generated['grammar'] ?? [] as $g) {
+            FavoriteSentenceGrammar::create([
+                'sentence_id' => $sentence->id,
+                'text' => $g['text'],
+                'meaning' => $g['meaning'] ?? '',
+                'reading' => $g['reading'] ?? '',
+            ]);
+        }
+
+        foreach ($generated['quizzes'] ?? [] as $quizData) {
+            $quiz = FavoriteSentenceQuiz::create([
+                'sentence_id' => $sentence->id,
+                'question' => $quizData['question'],
+                'question_ko' => $quizData['question_ko'] ?? '',
+                'explanation' => $quizData['explanation'] ?? '',
+            ]);
+
+            foreach ($quizData['choices'] ?? [] as $choice) {
+                FavoriteSentenceQuizChoice::create([
+                    'quiz_id' => $quiz->id,
+                    'text' => $choice['text'],
+                    'meaning' => $choice['meaning'] ?? '',
+                    'is_correct' => $choice['isCorrect'] ?? false,
+                ]);
+            }
+        }
+
+        return response()->json(['message' => '즐겨찾기에 추가되었습니다.']);
+    }
+
+    function sendGptSentencePrompt(string $sentence): ?array
+    {
+        $prompt = <<<PROMPT
+다음 일본어 문장을 기반으로 학습용 데이터를 JSON 형식으로 만들어줘.
+
+문장:
+{$sentence}
+
+요청 형식:
+{
+  "text": "문장 (일본어)",
+  "translation": "문장 해석 (한국어)",
+  "words": [
+    { "text": "...", "reading": "...", "meaning": "..." }
+  ],
+  "grammar": [
+    { "text": "...", "meaning": "..." }
+  ],
+  "quizzes": [
+    {
+      "question": "...",
+      "question_ko": "...",
+      "choices": [
+        { "text": "...", "meaning": "...", "isCorrect": true },
+        ...
+      ],
+      "explanation": "..."
+    }
+  ]
+}
+
+조건:
+- 단어는 중요한 것만 2~4개만 뽑아줘
+- 문법은 핵심 표현 1~2개로 간단히
+- 퀴즈는 2개 이상, 보기 4개 (1개만 정답)
+- 전체 응답은 JSON 형식으로, 불필요한 텍스트 없이 출력
+PROMPT;
+
+        try {
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . env('OPENAI_API_KEY'),
+            ])->post('https://api.openai.com/v1/chat/completions', [
+                'model' => 'gpt-3.5-turbo',
+                'messages' => [
+                    ["role" => "system", "content" => "너는 일본어 학습 데이터를 만드는 AI야. 응답은 반드시 JSON으로만 출력해."],
+                    ["role" => "user", "content" => $prompt],
+                ],
+            ]);
+
+            $content = $response['choices'][0]['message']['content'] ?? '';
+            return json_decode($content, true);
+        } catch (\Throwable $e) {
+            report($e);
+            return null;
+        }
+    }
 }
