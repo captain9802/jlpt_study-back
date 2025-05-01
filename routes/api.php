@@ -30,6 +30,8 @@ Route::middleware([\Illuminate\Http\Middleware\HandleCors::class])
             Route::get('/favorites/words/{listId}', [FavoriteController::class, 'index']);
             Route::post('/favorites/words/toggle', [FavoriteController::class, 'toggleFavorite']);
 
+            Route::post('/quiz/word', [FavoriteController::class, 'generateWordQuiz']);
+
             Route::get('/favorites/grammar-lists', [FavoriteListController::class, 'getGrammarLists']);
             Route::post('/favorites/grammar-lists', [FavoriteListController::class, 'storeGrammarList']);
             Route::put('/favorites/grammar-lists/{id}', [FavoriteListController::class, 'updateGrammarList']);

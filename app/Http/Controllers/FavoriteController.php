@@ -41,8 +41,6 @@ class FavoriteController extends Controller
         return response()->json($words);
     }
 
-
-
     public function toggleFavorite(Request $request)
     {
         try {
@@ -68,6 +66,76 @@ class FavoriteController extends Controller
             file_put_contents('php://stderr', "[❌ 즐겨찾기 처리 실패] " . $e->getMessage());
             return response()->json(['message' => '서버 오류', 'error' => $e->getMessage()], 500);
         }
+    }
+
+    public function generateWordQuiz(Request $request)
+    {
+        file_put_contents('php://stderr', "11111111111111111111\n");
+
+        $validated = $request->validate([
+            'list_id' => 'required|integer',
+            'order' => 'required|in:default,shuffle',
+            'direction' => 'required|in:jp-ko,ko-jp,random',
+        ]);
+        file_put_contents('php://stderr', "11111111111111111111\n");
+
+        $words = Favorite::where('list_id', $validated['list_id'])->get();
+        file_put_contents('php://stderr', "22222222222222222222222\n");
+
+        if ($validated['order'] === 'shuffle') {
+            $words = $words->shuffle()->values();
+        }
+        file_put_contents('php://stderr', "3333333333333333333333333\n");
+
+        $allWords = Favorite::where('list_id', $validated['list_id'])->get();
+        file_put_contents('php://stderr', "4444444444444444444444444\n");
+
+        $quiz = $words->map(function ($word) use ($validated, $allWords) {
+            $jp = $word->text;
+            $ko = $word->meaning;
+
+            $mode = match ($validated['direction']) {
+                'jp-ko' => 'jp-ko',
+                'ko-jp' => 'ko-jp',
+                'random' => rand(0, 1) === 1 ? 'jp-ko' : 'ko-jp',
+            };
+
+            $correctText = $mode === 'jp-ko' ? $ko : $jp;
+            $correctTranslation = $mode === 'jp-ko' ? $jp : $ko;
+            $question = $mode === 'jp-ko' ? $jp : $ko;
+
+            $wrongOptionsRaw = $allWords
+                ->where('id', '!=', $word->id)
+                ->unique($mode === 'jp-ko' ? 'meaning' : 'text')
+                ->shuffle()
+                ->take(3)
+                ->values();
+
+            $wrongOptions = $wrongOptionsRaw->map(function ($item) use ($mode) {
+                return [
+                    'text' => $mode === 'jp-ko' ? $item->meaning : $item->text,
+                    'translation' => $mode === 'jp-ko' ? $item->text : $item->meaning,
+                ];
+            })->toArray();
+            file_put_contents('php://stderr', "555555555555555555555555\n");
+
+            $options = array_merge([
+                ['text' => $correctText, 'translation' => $correctTranslation]
+            ], $wrongOptions);
+            file_put_contents('php://stderr', "6666666666666666666666\n");
+
+            shuffle($options);
+            $answerIndex = array_search($correctText, array_column($options, 'text'));
+            file_put_contents('php://stderr', "777777777777777777777777777777\n");
+
+            return [
+                'jp' => $question,
+                'options' => $options,
+                'answer' => $answerIndex
+            ];
+        });
+
+        return response()->json($quiz->values());
     }
 
     public function getFavoriteGrammars(Request $request, $listId)
