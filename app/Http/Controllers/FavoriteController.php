@@ -70,25 +70,19 @@ class FavoriteController extends Controller
 
     public function generateWordQuiz(Request $request)
     {
-        file_put_contents('php://stderr', "11111111111111111111\n");
-
         $validated = $request->validate([
             'list_id' => 'required|integer',
             'order' => 'required|in:default,shuffle',
             'direction' => 'required|in:jp-ko,ko-jp,random',
         ]);
-        file_put_contents('php://stderr', "11111111111111111111\n");
 
         $words = Favorite::where('list_id', $validated['list_id'])->get();
-        file_put_contents('php://stderr', "22222222222222222222222\n");
 
         if ($validated['order'] === 'shuffle') {
             $words = $words->shuffle()->values();
         }
-        file_put_contents('php://stderr', "3333333333333333333333333\n");
 
         $allWords = Favorite::where('list_id', $validated['list_id'])->get();
-        file_put_contents('php://stderr', "4444444444444444444444444\n");
 
         $quiz = $words->map(function ($word) use ($validated, $allWords) {
             $jp = $word->text;
@@ -117,12 +111,10 @@ class FavoriteController extends Controller
                     'translation' => $mode === 'jp-ko' ? $item->text : $item->meaning,
                 ];
             })->toArray();
-            file_put_contents('php://stderr', "555555555555555555555555\n");
 
             $options = array_merge([
                 ['text' => $correctText, 'translation' => $correctTranslation]
             ], $wrongOptions);
-            file_put_contents('php://stderr', "6666666666666666666666\n");
 
             shuffle($options);
             $answerIndex = array_search($correctText, array_column($options, 'text'));
@@ -141,7 +133,6 @@ class FavoriteController extends Controller
     public function getFavoriteGrammars(Request $request, $listId)
     {
         $user = $request->user();
-        file_put_contents('php://stderr', "111111111111as11\n");
 
         $grammarList = FavoriteGrammarList::with([
             'grammars.examples',
@@ -150,7 +141,6 @@ class FavoriteController extends Controller
             ->where('id', $listId)
             ->where('user_id', $user->id)
             ->firstOrFail();
-        file_put_contents('php://stderr', "22222222222222222\n");
 
         return response()->json($grammarList->grammars);
     }
@@ -478,5 +468,96 @@ PROMPT;
             report($e);
             return null;
         }
+    }
+
+    public function generateGrammarQuiz(Request $request)
+    {
+        file_put_contents('php://stderr', "11111111111111111111111111\n");
+
+        $validated = $request->validate([
+            'list_id' => 'required|integer',
+            'order' => 'required|in:default,shuffle',
+        ]);
+        file_put_contents('php://stderr', "22222222222222222\n");
+
+        $favorites = FavoriteGrammar::with(['quizzes.choices'])
+            ->where('list_id', $validated['list_id'])
+            ->get();
+        file_put_contents('php://stderr', "33333333333333333333333\n");
+
+        $quizzes = collect();
+        file_put_contents('php://stderr', "4444444444444444444444444\n");
+
+        foreach ($favorites as $grammar) {
+            if ($grammar->quizzes->isEmpty()) continue;
+
+            $quiz = $grammar->quizzes->random();
+            $choices = $quiz->choices->shuffle()->values();
+
+            $answerIndex = $choices->search(fn($c) => $c->is_correct);
+
+            $quizzes->push([
+                'jp' => $quiz->question,
+                'translation' => $quiz->translation,
+                'options' => $choices->map(fn($c) => [
+                    'text' => $c->text,
+                    'translation' => $c->meaning,
+                    'explanation' => $c->explanation
+                ]),
+                'answer' => $answerIndex
+            ]);
+        }
+
+        file_put_contents('php://stderr', "55555555555555555555\n");
+
+        if ($validated['order'] === 'shuffle') {
+            $quizzes = $quizzes->shuffle()->values();
+        }
+        file_put_contents('php://stderr', "66666666666666666666\n");
+
+        return response()->json($quizzes);
+    }
+
+    public function generateSentenceQuiz(Request $request)
+    {
+        $validated = $request->validate([
+            'list_id' => 'required|integer',
+            'order' => 'required|in:default,shuffle'
+        ]);
+
+        // 해당 리스트의 문장 즐겨찾기들 로드 (문장 + 퀴즈들 포함)
+        $sentences = FavoriteSentence::with('quizzes.choices')
+            ->where('list_id', $validated['list_id'])
+            ->get();
+
+        $quizItems = collect();
+
+        foreach ($sentences as $sentence) {
+            if ($sentence->quizzes->isEmpty()) continue;
+
+            // 퀴즈 배열 중 하나를 랜덤 선택
+            $quiz = $sentence->quizzes->random();
+            $choices = $quiz->choices->shuffle()->values();
+            $answerIndex = $choices->search(fn($c) => $c->isCorrect);
+            $answerIndex = is_int($answerIndex) ? $answerIndex : 0;
+
+            $quizItems->push([
+                'jp' => $quiz->question,
+                'translation' => $sentence->translation,
+                'explanation' => $quiz->explanation ?? '',
+                'options' => $choices->map(fn($c) => [
+                    'text' => $c->text,
+                    'meaning' => $c->meaning
+                ]),
+                'answer' => $answerIndex
+            ]);
+        }
+
+        // 순서대로 or 랜덤 셔플
+        if ($validated['order'] === 'shuffle') {
+            $quizItems = $quizItems->shuffle()->values();
+        }
+
+        return response()->json($quizItems);
     }
 }

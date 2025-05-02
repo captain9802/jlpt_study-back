@@ -41,6 +41,8 @@ Route::middleware([\Illuminate\Http\Middleware\HandleCors::class])
             Route::get('/favorites/grammars/{list_id}', [FavoriteController::class, 'getFavoriteGrammars']);
             Route::post('/favorites/grammars/toggle', [FavoriteController::class, 'toggleGrammarFavorite']);
 
+            Route::post('/quiz/grammar', [FavoriteController::class, 'generateGrammarQuiz']);
+
             Route::get('/favorites/sentence-lists', [FavoriteListController::class, 'getSentenceLists']);
             Route::post('/favorites/sentence-lists', [FavoriteListController::class, 'storeSentenceList']);
             Route::put('/favorites/sentence-lists/{id}', [FavoriteListController::class, 'updateSentenceList']);
@@ -49,6 +51,8 @@ Route::middleware([\Illuminate\Http\Middleware\HandleCors::class])
             Route::get('/favorites/sentences', [FavoriteController::class, 'getAllSentenceTexts']);
             Route::get('/favorites/sentences/{list_id}', [FavoriteController::class, 'getFavoriteSentences']);
             Route::post('/favorites/sentences/toggle', [FavoriteController::class, 'toggleSentenceFavorite']);
+
+            Route::post('/quiz/sentence', [FavoriteController::class, 'generateSentenceQuiz']);
 
         });
     });

@@ -22,6 +22,7 @@ class FavoriteGrammar extends Model
         return $this->belongsTo(FavoriteGrammarList::class, 'list_id');
     }
 
+
     public function quizzes()
     {
         return $this->hasMany(GrammarQuiz::class, 'grammar_id');
