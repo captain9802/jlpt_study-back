@@ -18,6 +18,12 @@ class FavoriteList extends Model
         return $this->hasMany(Favorite::class, 'list_id');
     }
 
+    public function words()
+    {
+        return $this->hasMany(Favorite::class, 'list_id');
+    }
+
+
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');

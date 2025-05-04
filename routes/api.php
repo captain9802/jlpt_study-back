@@ -12,7 +12,6 @@ Route::middleware([\Illuminate\Http\Middleware\HandleCors::class])
     ->prefix('api')
     ->group(function () {
         Route::middleware(['auth:api'])->group(function () {
-            // 기존 라우트
             Route::get('/ai-settings', [UserController::class, 'getSettings']);
             Route::post('/ai-settings', [UserController::class, 'saveSettings']);
             Route::put('/ai-settings/language-mode', [UserController::class, 'updateLanguageMode']);

@@ -10,7 +10,18 @@ class FavoriteListController extends Controller
 {
     public function index(Request $request)
     {
-        return FavoriteList::where('user_id', $request->user()->id)->get();
+        $userId = $request->user()->id;
+        $lists = FavoriteList::where('user_id', $userId)->get();
+        $mapped = $lists->map(function ($list) {
+            $firstWord = $list->words()->orderBy('created_at')->first();
+            $preview = is_string($firstWord?->text) ? $firstWord->text : '미리보기 없음';
+            return array_merge(
+                $list->toArray(),
+                ['preview' => $preview]
+            );
+        });
+
+        return response()->json($mapped);
     }
 
     public function store(Request $request)
@@ -47,15 +58,23 @@ class FavoriteListController extends Controller
     public function getGrammarLists(Request $request)
     {
         $user = $request->user();
-        file_put_contents('php://stderr', "1111111111111111111\n");
 
         $lists = FavoriteGrammarList::where('user_id', $user->id)
             ->orderBy('created_at', 'desc')
             ->get();
-        file_put_contents('php://stderr', "222222222222222\n");
 
-        return response()->json($lists);
+        $mapped = $lists->map(function ($list) {
+            $first = $list->grammars()->orderBy('created_at')->first();
+
+            return array_merge(
+                $list->toArray(),
+                ['preview' => $first?->grammar ?? '미리보기 없음']
+            );
+        });
+
+        return response()->json($mapped);
     }
+
 
     public function storeGrammarList(Request $request)
     {
@@ -104,8 +123,18 @@ class FavoriteListController extends Controller
             ->orderByDesc('created_at')
             ->get();
 
-        return response()->json($lists);
+        $mapped = $lists->map(function ($list) {
+            $first = $list->sentences()->orderBy('created_at')->first();
+
+            return array_merge(
+                $list->toArray(),
+                ['preview' => $first?->text ?? '미리보기 없음']
+            );
+        });
+
+        return response()->json($mapped);
     }
+
 
     public function storeSentenceList(Request $request)
     {

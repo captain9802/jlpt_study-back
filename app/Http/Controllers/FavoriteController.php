@@ -45,17 +45,14 @@ class FavoriteController extends Controller
     {
         try {
             $data = $request->only(['list_id', 'text', 'reading', 'meaning', 'onyomi', 'kunyomi', 'examples', 'breakdown']);
-            file_put_contents('php://stderr', "1111111111111111111\n");
 
             $existingFavorite = Favorite::when(isset($data['list_id']), function ($query) use ($data) {
                 return $query->where('list_id', $data['list_id']);
             })
                 ->where('text', $data['text'])
                 ->first();
-            file_put_contents('php://stderr', "112222222222222\n");
 
             if ($existingFavorite) {
-                file_put_contents('php://stderr', "33333333333리\n");
                 $existingFavorite->delete();
                 return response()->json(['message' => '단어가 즐겨찾기에서 삭제되었습니다.'], 200);
             } else {
@@ -63,7 +60,6 @@ class FavoriteController extends Controller
                 return response()->json(['message' => '단어가 즐겨찾기에 추가되었습니다.', 'data' => $favorite], 201);
             }
         } catch (\Exception $e) {
-            file_put_contents('php://stderr', "[❌ 즐겨찾기 처리 실패] " . $e->getMessage());
             return response()->json(['message' => '서버 오류', 'error' => $e->getMessage()], 500);
         }
     }
@@ -118,7 +114,6 @@ class FavoriteController extends Controller
 
             shuffle($options);
             $answerIndex = array_search($correctText, array_column($options, 'text'));
-            file_put_contents('php://stderr', "777777777777777777777777777777\n");
 
             return [
                 'jp' => $question,
@@ -160,56 +155,36 @@ class FavoriteController extends Controller
     public function toggleGrammarFavorite(Request $request)
     {
         $user = $request->user();
-        file_put_contents('php://stderr', "11111111111111111111\n");
-        file_put_contents('php://stderr', "0000000000000000\n");
 
         $data = $request->validate([
             'list_id' => 'nullable|integer',
             'grammar' => 'required|string',
             'meaning' => 'required|string',
         ]);
-
         $grammarText = is_array($data['grammar']) ? ($data['grammar']['text'] ?? '') : $data['grammar'];
-        $normalizedGrammar = preg_replace('/^〜/u', '', $grammarText);
 
-        file_put_contents('php://stderr', "grammar raw: " . print_r($data['grammar'], true) . "\n");
-        file_put_contents('php://stderr', "normalized: " . print_r($normalizedGrammar, true) . "\n");
-        file_put_contents('php://stderr', "??????????????????????????\n");
-
-
-        file_put_contents('php://stderr', "222222222222222222222\n");
-        $exists = FavoriteGrammar::when(isset($data['list_id']), function ($query) use ($data) {
-            return $query->where('list_id', $data['list_id']);
-        })
-            ->where('grammar', $normalizedGrammar)
+        $exists = FavoriteGrammar::query()
+            ->when(isset($data['list_id']), fn($q) => $q->where('list_id', $data['list_id']))
+            ->where('grammar', $grammarText)
             ->first();
-
-        file_put_contents('php://stderr', "3333333333333333333\n");
 
         if ($exists) {
             $exists->delete();
             return response()->json(['message' => '즐겨찾기에서 삭제되었습니다.']);
         }
-        file_put_contents('php://stderr', "444444444444444444444\n");
 
-        // 새로 추가
         $newGrammar = FavoriteGrammar::create([
             'list_id' => $data['list_id'],
             'grammar' => $data['grammar'],
             'meaning' => $data['meaning'],
         ]);
-        file_put_contents('php://stderr', "555555555555555555555555\n");
 
-        // GPT 호출해서 예시 + 퀴즈 생성
         $gptResult = $this->generateGrammarData($data['grammar'], $data['meaning']);
-        file_put_contents('php://stderr', "6666666666666666666666\n");
 
         if (!$gptResult) {
             return response()->json(['message' => 'GPT 생성 실패'], 500);
         }
-        file_put_contents('php://stderr', "777777777777777777777777\n");
 
-        // 1. 예시 저장
         foreach ($gptResult['examples'] as $example) {
             GrammarExample::create([
                 'grammar_id' => $newGrammar->id,
@@ -217,9 +192,7 @@ class FavoriteController extends Controller
                 'ko' => $example['ko'],
             ]);
         }
-        file_put_contents('php://stderr', "888888888888\n");
 
-        // 2. 퀴즈 저장
         foreach ($gptResult['quizzes'] as $quizData) {
             $quiz = GrammarQuiz::create([
                 'grammar_id' => $newGrammar->id,
@@ -227,7 +200,6 @@ class FavoriteController extends Controller
                 'translation' => $quizData['translation'],
                 'answer' => $quizData['answer'],
             ]);
-            file_put_contents('php://stderr', "9999999999999999999999999\n");
 
             foreach ($quizData['choices'] as $choice) {
                 GrammarChoice::create([
@@ -248,7 +220,7 @@ class FavoriteController extends Controller
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . env('OPENAI_API_KEY'),
             ])->post('https://api.openai.com/v1/chat/completions', [
-                'model' => 'gpt-3.5-turbo',
+                'model' => 'gpt-4-turbo',
                 'messages' => [
                     [
                         'role' => 'system',
@@ -289,7 +261,6 @@ class FavoriteController extends Controller
             return json_decode($content, true);
 
         } catch (\Exception $e) {
-            file_put_contents('php://stderr', "GPT 호출 실패: " . $e->getMessage() . "\n");
             return null;
         }
     }
@@ -297,7 +268,6 @@ class FavoriteController extends Controller
     public function getFavoriteSentences($list_id, Request $request)
     {
         $user = $request->user();
-        file_put_contents('php://stderr', "11111111111111111111111111\n");
 
             $sentences = FavoriteSentence::with(['words', 'grammar'])
                 ->where('list_id', $list_id)
@@ -305,8 +275,6 @@ class FavoriteController extends Controller
                     $q->where('user_id', $user->id);
                 })
                 ->get();
-
-        file_put_contents('php://stderr', "222222222222222222222222\n");
 
         $formatted = $sentences->map(function ($s) {
             return [
@@ -324,7 +292,6 @@ class FavoriteController extends Controller
                 ])
             ];
         });
-        file_put_contents('php://stderr', "33333333333333333333333333333333\n");
 
         return response()->json($formatted);
     }
@@ -346,28 +313,26 @@ class FavoriteController extends Controller
         $user = $request->user();
 
         $data = $request->validate([
-            'list_id' => 'required|integer',
+            'list_id' => 'nullable|integer',
             'text' => 'required|string',
             'translation' => 'nullable|string',
         ]);
 
-        // 기존에 있으면 삭제
-        $existing = FavoriteSentence::where('list_id', $data['list_id'])
-            ->where('text', $data['text'])
-            ->first();
+        $normalizedText = trim($data['text']);
+
+        $existing = FavoriteSentence::where('text', $normalizedText)->first();
+
 
         if ($existing) {
             $existing->delete();
             return response()->json(['message' => '즐겨찾기에서 삭제되었습니다.']);
         }
 
-        // GPT로 문장 구성 요청
         $generated = $this->sendGptSentencePrompt($data['text']);
         if (!$generated) {
             return response()->json(['message' => 'GPT 응답 오류'], 500);
         }
 
-        // 문장 저장
         $sentence = FavoriteSentence::create([
             'list_id' => $data['list_id'],
             'text' => $generated['text'] ?? $data['text'],
@@ -416,7 +381,10 @@ class FavoriteController extends Controller
     function sendGptSentencePrompt(string $sentence): ?array
     {
         $prompt = <<<PROMPT
-다음 일본어 문장을 기반으로 학습용 데이터를 JSON 형식으로 만들어줘.
+너는 일본어 학습 데이터를 생성하는 AI야.
+
+다음 일본어 문장을 기반으로, JLPT 스타일의 학습용 JSON 데이터를 아래 형식에 따라 만들어줘.
+※ 반드시 **JSON 형식만 출력**하고, 설명, 주석, 마크다운, 기타 텍스트는 포함하지 마.
 
 문장:
 {$sentence}
@@ -433,29 +401,33 @@ class FavoriteController extends Controller
   ],
   "quizzes": [
     {
-      "question": "...",
-      "question_ko": "...",
+      "question": "...",        // JLPT 스타일 문제 (예: 빈칸 넣기, 올바른 표현 고르기 등)
+      "question_ko": "...",     // 문제의 한국어 해석
       "choices": [
         { "text": "...", "meaning": "...", "isCorrect": true },
-        ...
+        { "text": "...", "meaning": "...", "isCorrect": false },
+        { "text": "...", "meaning": "...", "isCorrect": false },
+        { "text": "...", "meaning": "...", "isCorrect": false }
       ],
-      "explanation": "..."
+      "explanation": "정답인 이유 설명"
     }
   ]
 }
 
 조건:
-- 단어는 중요한 것만 2~4개만 뽑아줘
-- 문법은 핵심 표현 1~2개로 간단히
-- 퀴즈는 2개 이상, 보기 4개 (1개만 정답)
-- 전체 응답은 JSON 형식으로, 불필요한 텍스트 없이 출력
+- 단어는 문장에서 중요한 것만 2~4개 추출
+- 문법은 핵심 표현 1~2개만 포함
+- 퀴즈는 총 2개 이상 생성하고, **JLPT 시험 스타일로 구성**
+  (예: 올바른 단어/문법 선택, 빈칸 채우기 등)
+- 보기(choice)는 4개, 정답은 1개만
+- 모든 응답은 **JSON 내부에만 포함**되어야 하며, 출력 전후로 어떤 문장도 포함하지 마
 PROMPT;
 
         try {
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . env('OPENAI_API_KEY'),
             ])->post('https://api.openai.com/v1/chat/completions', [
-                'model' => 'gpt-3.5-turbo',
+                'model' => 'gpt-4-turbo',
                 'messages' => [
                     ["role" => "system", "content" => "너는 일본어 학습 데이터를 만드는 AI야. 응답은 반드시 JSON으로만 출력해."],
                     ["role" => "user", "content" => $prompt],
@@ -472,22 +444,14 @@ PROMPT;
 
     public function generateGrammarQuiz(Request $request)
     {
-        file_put_contents('php://stderr', "11111111111111111111111111\n");
-
         $validated = $request->validate([
             'list_id' => 'required|integer',
             'order' => 'required|in:default,shuffle',
         ]);
-        file_put_contents('php://stderr', "22222222222222222\n");
-
         $favorites = FavoriteGrammar::with(['quizzes.choices'])
             ->where('list_id', $validated['list_id'])
             ->get();
-        file_put_contents('php://stderr', "33333333333333333333333\n");
-
         $quizzes = collect();
-        file_put_contents('php://stderr', "4444444444444444444444444\n");
-
         foreach ($favorites as $grammar) {
             if ($grammar->quizzes->isEmpty()) continue;
 
@@ -507,14 +471,9 @@ PROMPT;
                 'answer' => $answerIndex
             ]);
         }
-
-        file_put_contents('php://stderr', "55555555555555555555\n");
-
         if ($validated['order'] === 'shuffle') {
             $quizzes = $quizzes->shuffle()->values();
         }
-        file_put_contents('php://stderr', "66666666666666666666\n");
-
         return response()->json($quizzes);
     }
 
@@ -525,7 +484,6 @@ PROMPT;
             'order' => 'required|in:default,shuffle'
         ]);
 
-        // 해당 리스트의 문장 즐겨찾기들 로드 (문장 + 퀴즈들 포함)
         $sentences = FavoriteSentence::with('quizzes.choices')
             ->where('list_id', $validated['list_id'])
             ->get();
@@ -535,16 +493,16 @@ PROMPT;
         foreach ($sentences as $sentence) {
             if ($sentence->quizzes->isEmpty()) continue;
 
-            // 퀴즈 배열 중 하나를 랜덤 선택
             $quiz = $sentence->quizzes->random();
             $choices = $quiz->choices->shuffle()->values();
-            $answerIndex = $choices->search(fn($c) => $c->isCorrect);
+            $answerIndex = $choices->search(fn($c) => $c->is_correct);
             $answerIndex = is_int($answerIndex) ? $answerIndex : 0;
 
             $quizItems->push([
                 'jp' => $quiz->question,
                 'translation' => $sentence->translation,
                 'explanation' => $quiz->explanation ?? '',
+                'question_ko' => $quiz->question_ko ?? '',
                 'options' => $choices->map(fn($c) => [
                     'text' => $c->text,
                     'meaning' => $c->meaning
@@ -553,7 +511,6 @@ PROMPT;
             ]);
         }
 
-        // 순서대로 or 랜덤 셔플
         if ($validated['order'] === 'shuffle') {
             $quizItems = $quizItems->shuffle()->values();
         }

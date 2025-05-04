@@ -14,8 +14,8 @@ return new class extends Migration
         Schema::create('grammar_examples', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('grammar_id');
-            $table->text('ja'); // 일본어 문장
-            $table->text('ko'); // 한국어 번역
+            $table->text('ja');
+            $table->text('ko');
             $table->timestamps();
 
             $table->foreign('grammar_id')->references('id')->on('favorite_grammars')->onDelete('cascade');

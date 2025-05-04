@@ -11,24 +11,17 @@ class AiPromptGenerator
 {
     public static function generate(string $language, UserAiSetting $settings): string
     {
-        file_put_contents('php://stderr', "11111111111111111111됨\n");
         $userId = $settings->user_id;
-        file_put_contents('php://stderr', "👤 userId: {$userId}\n");
-
-        file_put_contents('php://stderr', "11111111111111111111됨\n");
 
         $existingPrompt = AiPrompt::where('user_id', $userId)
             ->where('language', $language)
             ->first();
-
-        file_put_contents('php://stderr', "22222222222222222222222222222\n");
 
             $langComment = match ($language) {
                 'jp-only' => "※ 반드시 일본어로만 응답하세요。한국어 사용 금지。질문이 한국어여도 일본어로만 대답하세요。",
                 'ko' => "※ 문장은 일본어로, 해석과 설명은 한국어로 작성하세요。",
                 default => "※ 일본어로 대화하고, 필요 시 한국어 해석을 포함하세요。",
             };
-            file_put_contents('php://stderr', "아이우에오\n");
 
             $systemPrompt = <<<PROMPT
                                 너는 일본어 학습 AI야. 이름은 \"{$settings->name}\"이고, {$settings->personality} 성격, {$settings->tone} 말투, {$settings->voice} 목소리를 사용해.
@@ -55,13 +48,11 @@ class AiPromptGenerator
                                     ]
 
                                 PROMPT;
-        file_put_contents('php://stderr', "아우우우우우우우우\n");
 
             AiPrompt::updateOrCreate(
                 ['user_id' => $userId, 'language' => $language],
                 ['prompt' => $systemPrompt]
             );
-        file_put_contents('php://stderr', "암ㄴ련ㄷ로ㅕ모쟈로먖ㄹ\n");
 
         return $systemPrompt;
     }
@@ -98,13 +89,10 @@ class AiPromptGenerator
     public static function withRecentMessages(int $userId, string $userMessage): array
     {
         $existingPrompt = AiPrompt::where('user_id', $userId)->first();
-        file_put_contents('php://stderr', "111111111111111111\n");
 
         if (!$existingPrompt) {
             throw new \Exception('AI 프롬프트가 존재하지 않습니다. 먼저 설정을 저장해주세요.');
         }
-
-        file_put_contents('php://stderr', "2222222222222222222\n");
 
         $systemPrompt = $existingPrompt->prompt;
 
@@ -132,8 +120,6 @@ class AiPromptGenerator
             ->values()
             ->all();
 
-        file_put_contents('php://stderr', "44444444444444444444\n");
-
         array_unshift($recentMemories, [
             'role' => 'system',
             'content' => $wordGuide
@@ -143,23 +129,15 @@ class AiPromptGenerator
             'content' => $systemPrompt
         ]);
 
-        file_put_contents('php://stderr', "5555555555555555555555\n");
-        file_put_contents('php://stderr', "🧪 userId: {$userId}, message: {$userMessage}\n");
-
         ChatMemory::create([
             'user_id' => $userId,
             'summary' => $userMessage
         ]);
 
-        file_put_contents('php://stderr', "66666666666666666666\n");
-
         $recentMemories[] = [
             'role' => 'user',
             'content' => $userMessage
         ];
-
-        file_put_contents('php://stderr', "777777777777777777777\n");
-
         return $recentMemories;
     }
 
