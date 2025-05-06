@@ -124,19 +124,18 @@ class AiPromptGenerator
             'role' => 'system',
             'content' => $wordGuide
         ]);
-        array_unshift($recentMemories, [
-            'role' => 'system',
-            'content' => $systemPrompt
-        ]);
 
         ChatMemory::create([
             'user_id' => $userId,
             'summary' => $userMessage
         ]);
-
         $recentMemories[] = [
             'role' => 'user',
             'content' => $userMessage
+        ];
+        $recentMemories[] = [
+            'role' => 'system',
+            'content' => $systemPrompt
         ];
         return $recentMemories;
     }

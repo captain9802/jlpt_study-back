@@ -133,14 +133,14 @@ class ChatController extends Controller
                       "text": "단어",
                       "reading": "읽는 법",
                       "meaning": "뜻",
-                      "onyomi": "음독",
-                      "kunyomi": "훈독",
-                      "examples": ["예문 – 해석"],  // 예문 1개만
+                      "onyomi": "이 단어의 음독",
+                      "kunyomi": "이 단어의 훈독",
+                      "examples": ["예문 – 해석"],  // 예문 1개 ~ 3개까지만
                       "breakdown": [
                         {
                           "kanji": "한자",
-                          "onyomi": "음독이 있는 경우",
-                          "kunyomi": "훈독이 있는 경우"
+                          "onyomi": "한자의 음독이 있는 경우",
+                          "kunyomi": "한자의 훈독이 있는 경우"
                         }
                       ]
                     }
@@ -148,9 +148,10 @@ class ChatController extends Controller
                 }
 
                 - 단어 수는 3개 이내로 추출
-                - 예문은 1개만 제공 (충분한 의미 전달이 가능해야 함)
+                - 예문은 1개 ~ 3개까지만 제공 (충분한 의미 전달이 가능해야 함)
+                - 예문이 각각 훈독을 사용한 예문과 음독을 사용한 예문이 포함되어야 함
                 - breakdown은 가능한 주요 한자에 대해서만 작성
-                - "훈독 없음" 또는 "음독 없음"은 "なし"으로 표시
+                - "훈독 없음" 또는 "음독 없음"은 "없음"으로 표시
                 SYS
             ],
             [
