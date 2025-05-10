@@ -151,10 +151,10 @@ class AiPromptGenerator
 
         $count = ChatMemory::where('user_id', $userId)->count();
 
-        if ($count > 10) {
+        if ($count > 20) {
             ChatMemory::where('user_id', $userId)
                 ->orderBy('id', 'asc')
-                ->limit($count - 10)
+                ->limit($count - 20)
                 ->delete();
         }
     }
