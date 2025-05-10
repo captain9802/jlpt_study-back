@@ -1,61 +1,92 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# 🇯🇵 sws-jlpt - Backend
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+**sws-jlpt**는 일본어 학습을 위한 AI 기반 웹 서비스의 백엔드입니다. 이 프로젝트는 Laravel 프레임워크를 기반으로 구축되었으며, 사용자 맞춤형 AI 설정, GPT 연동 대화 처리, 단어 및 문장 퀴즈 생성, 즐겨찾기 기능 등 다양한 기능을 제공합니다. 프론트엔드(Vue)와 RESTful API를 통해 통신하며, JWT 기반 인증 구조를 채택하고 있습니다.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## 🚀 주요 기능
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+* 🔐 **카카오 로그인 기반 JWT 인증 시스템**
+* ⚙️ **사용자 맞춤 AI 설정**: 아바타, 성격, 어투, 목소리, JLPT 레벨 등
+* 💬 **GPT 대화 처리 및 대화 내용 요약** 저장
+* 🧠 **문장 툴팁 요청 처리** (단어/문법/해석 JSON 분석)
+* ⭐ **단어/문장/문법 즐겨찾기 기능** 및 즐겨찾기 리스트 분류 시스템
+* 🧪 **GPT 퀴즈 생성 API** (문장 기반 퀴즈 3종 자동 생성 구조 포함)
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+---
 
-## Learning Laravel
+## 🧩 폴더 구조
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+```
+app/Http/Controllers/
+├── ChatController.php              # GPT 대화 처리 및 툴팁 응답
+├── FavoriteController.php          # 즐겨찾기 항목 처리 (단어/문장/문법)
+├── FavoriteListController.php      # 즐겨찾기 리스트 생성/조회/삭제
+├── QuizController.php              # 문장/문법 기반 퀴즈 자동 생성 API
+├── TooltipController.php           # 문장 내 단어/문법 분석 GPT 요청
+├── UserController.php              # 카카오 로그인 및 AI 설정 처리
+```
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+---
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## 📬 API 요약
 
-## Laravel Sponsors
+| 메서드        | 경로                              | 설명                  |
+| ---------- | ------------------------------- | ------------------- |
+| POST       | `/api/login`                    | 카카오 로그인 및 JWT 발급    |
+| GET/POST   | `/api/ai-settings`              | 사용자 AI 설정 조회 및 저장   |
+| POST       | `/api/chat`                     | 사용자 입력 기반 GPT 대화 요청 |
+| GET        | `/api/chat-memories`            | 이전 대화 요약 불러오기       |
+| POST       | `/api/chat/tooltip`             | 문장 분석 및 단어/문법 툴팁 요청 |
+| GET        | `/api/favorites/lists`          | 즐겨찾기 리스트 목록 조회      |
+| POST       | `/api/favorites/lists`          | 새 즐겨찾기 리스트 생성       |
+| PUT/DELETE | `/api/favorites/lists/{id}`     | 리스트 제목 수정/삭제        |
+| GET        | `/api/favorites/words/{listId}` | 특정 리스트 단어 즐겨찾기 조회   |
+| POST       | `/api/favorites/words/toggle`   | 단어 즐겨찾기 등록/해제       |
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+---
 
-### Premium Partners
+## 🔧 사용 기술
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development/)**
-- **[Active Logic](https://activelogic.com)**
+| 분류     | 기술                                |
+| ------ | --------------------------------- |
+| 언어     | PHP 8.x                           |
+| 프레임워크  | Laravel 10.x                      |
+| 인증     | JWT (tymon/jwt-auth)              |
+| API 통신 | RESTful 구조, Laravel Router        |
+| 데이터베이스 | MySQL                             |
+| 기타     | Laravel artisan, .env 설정 기반 환경 분리 |
 
-## Contributing
+---
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## ⚙️ 실행 방법
 
-## Code of Conduct
+```bash
+git clone https://github.com/사용자명/sws-jlpt-backend.git
+cd sws-jlpt-backend
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate
+php artisan serve
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+> `.env` 파일에서 DB 접속 정보, JWT\_SECRET 등 반드시 설정 필요
 
-## Security Vulnerabilities
+---
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## 🧪 테스트
 
-## License
+```bash
+php artisan test
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+또는 API별 개별 호출 테스트는 Postman/Insomnia를 이용해 JWT 인증 후 테스트 가능합니다.
+
+---
+
+## 👨‍💻 개발자
+
+* 손우성 ([@captain9802](https://github.com/captain9802))
+
+---
