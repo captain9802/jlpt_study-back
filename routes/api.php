@@ -20,6 +20,8 @@ Route::middleware([\Illuminate\Http\Middleware\HandleCors::class])
             Route::post('/chat-memories', [ChatController::class, 'saveSummary']);
             Route::post('/chat', [ChatController::class, 'sendMessage']);
 
+            Route::post('/favorites/word-detail', [FavoriteController::class, 'postWordDetail']);
+
             Route::get('/favorites/lists', [FavoriteListController::class, 'index']);
             Route::post('/favorites/lists', [FavoriteListController::class, 'store']);
             Route::put('/favorites/lists/{id}', [FavoriteListController::class, 'update']);

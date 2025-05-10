@@ -16,47 +16,29 @@ class ChatController extends Controller
         $user = $request->user();
         $userMessage = $request->input('message');
         $language = $request->input('language');
-
         if (!isset($language)) {
             return response()->json([
                 'message' => '언어 모드가 설정되지 않았습니다. 설정 후 다시 시도해주세요.',
                 'require_language_mode' => true
             ], 200);
         }
-
-        $messages = AiPromptGenerator::withRecentMessages(
-            $user->id,
-            $userMessage
-        );
-
+        $messages = AiPromptGenerator::withRecentMessages($user->id, $userMessage);
         $response = Http::withHeaders([
             'Authorization' => 'Bearer ' . env('OPENAI_API_KEY'),
         ])->post('https://api.openai.com/v1/chat/completions', [
             'model' => 'gpt-3.5-turbo',
             'messages' => $messages,
         ]);
-        $content = $response->json()['choices'][0]['message']['content'] ?? '없음';
         $aiMessage = $response->json('choices.0.message.content');
-
-        if ($content) {
-            try {
-                $parsed = json_decode($content, true);
-
-                if (json_last_error() !== JSON_ERROR_NONE) {
-                    return response()->json(['error' => 'GPT 응답 JSON 파싱 실패'], 500);
-                }
-
-                $aiText = $parsed['text'] ?? '';
-            } catch (\Exception $e) {
-                return response()->json(['error' => 'GPT 응답 처리 중 예외 발생'], 500);
-            }
+        if (!$aiMessage) {
+            return response()->json(['error' => 'GPT 응답 없음'], 500);
         }
+        AiPromptGenerator::saveAssistantResponse($user->id, $aiMessage);
+        $translation = AiPromptGenerator::gptTranslate($aiMessage);
+        $fullResponse = $response->json();
+        $fullResponse['translation'] = $translation;
 
-        if ($aiMessage) {
-            AiPromptGenerator::saveAssistantResponse($user->id, $aiMessage);
-        }
-
-        return response()->json($response->json());
+        return response()->json($fullResponse);
     }
 
     public function saveSummary(Request $request) {
@@ -117,69 +99,41 @@ class ChatController extends Controller
             [
                 'role' => 'system',
                 'content' => <<<SYS
-                너는 일본어 학습을 도와주는 AI야.
-
-                다음 조건을 반드시 지켜서 응답해:
-                - 반드시 **JSON 형식만** 출력할 것 (설명 X, 주석 X, 마크다운 X)
-                - 구조는 아래와 같아야 함:
-
-                {
-                  "translation": "한국어 번역",
-                  "grammar": [
-                    { "text": "문법 표현", "meaning": "의미" }
-                  ],
-                  "words": [
-                    {
-                      "text": "단어",
-                      "reading": "읽는 법",
-                      "meaning": "뜻",
-                      "onyomi": "이 단어의 음독",
-                      "kunyomi": "이 단어의 훈독",
-                      "examples": ["예문 – 해석"],  // 예문 1개 ~ 3개까지만
-                      "breakdown": [
-                        {
-                          "kanji": "한자",
-                          "onyomi": "한자의 음독이 있는 경우",
-                          "kunyomi": "한자의 훈독이 있는 경우"
-                        }
-                      ]
-                    }
-                  ]
-                }
-
-                - 단어 수는 3개 이내로 추출
-                - 예문은 1개 ~ 3개까지만 제공 (충분한 의미 전달이 가능해야 함)
-                - 예문이 각각 훈독을 사용한 예문과 음독을 사용한 예문이 포함되어야 함
-                - breakdown은 가능한 주요 한자에 대해서만 작성
-                - "훈독 없음" 또는 "음독 없음"은 "없음"으로 표시
-                SYS
+                                    다음 조건을 반드시 지켜서 응답해:
+                                    - 반드시 **JSON 형식만** 출력할 것 (설명 X, 주석 X, 마크다운 X)
+                                    - grammar는 문법 / words는 단어
+                                    - 구조는 아래와 같아야 함:
+                                    {
+                                      "grammar": [
+                                        { "text": "문법 표현", "meaning": "간결한 뜻" }
+                                      ],
+                                      "words": [
+                                        { "text": "단어", "reading": "읽는 법", "meaning": "뜻" }
+                                      ]
+                                    }
+                                    SYS
             ],
             [
                 'role' => 'user',
                 'content' => <<<PROMPT
                 다음 문장을 분석해줘:
-
                 "{$sentence}"
                 PROMPT
             ]
         ];
-
         try {
             $response = Http::timeout(60)->withHeaders([
                 'Authorization' => 'Bearer ' . env('OPENAI_API_KEY'),
             ])->post('https://api.openai.com/v1/chat/completions', [
                 'model' => 'gpt-4-turbo',
                 'messages' => $messages,
-                'max_tokens' => 1024,
+                'max_tokens' => 512,
             ]);
-
             $json = $response->json();
             $gptRaw = $json['choices'][0]['message']['content'] ?? '';
-
             preg_match('/\{[\s\S]*\}/', $gptRaw, $matches);
             $contentText = $matches[0] ?? '{}';
             $content = json_decode($contentText, true);
-
             if (!$content || !is_array($content)) {
                 return response()->json([
                     'error' => 'GPT 응답을 JSON으로 파싱하지 못했습니다.',
@@ -193,6 +147,7 @@ class ChatController extends Controller
                 ],
                 'words' => $content['words'] ?? [],
             ];
+
             cache()->put($cacheKey, $result, now()->addMinutes(1));
             return response()->json($result);
         } catch (\Exception $e) {
@@ -202,5 +157,4 @@ class ChatController extends Controller
             ], 500);
         }
     }
-
 }

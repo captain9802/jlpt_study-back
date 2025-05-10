@@ -517,4 +517,61 @@ PROMPT;
 
         return response()->json($quizItems);
     }
+
+    public function postWordDetail(Request $request)
+    {
+        $text = $request->input('text');
+
+        if (!$text) {
+            return response()->json(['error' => '단어가 필요합니다.'], 422);
+        }
+
+        $messages = [
+            [
+                'role' => 'system',
+                'content' => <<<SYS
+
+                            {$text}를 json으로 분석해줘. 전부 일본어로 작성해줘.
+                            {
+                            "onyomi": "이 단어의 음독",
+                              "kunyomi": "이 단어의 훈독",
+                              "examples": ["예문 – 해석"],  // 예문 1개 ~ 3개까지만
+                              "breakdown": [
+                                {
+                                  "kanji": "한자",
+                                  "onyomi": "한자의 음독이 있는 경우",
+                                  "kunyomi": "한자의 훈독이 있는 경우"
+                                }
+                              ]
+                            }
+                            SYS
+            ],
+            [
+                'role' => 'user',
+                'content' => "단어: {$text}"
+            ]
+        ];
+
+        try {
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . env('OPENAI_API_KEY'),
+            ])->post('https://api.openai.com/v1/chat/completions', [
+                'model' => 'gpt-4-turbo',
+                'messages' => $messages,
+                'temperature' => 0.2,
+                'max_tokens' => 800
+            ]);
+
+            $gptRaw = $response->json('choices.0.message.content');
+            preg_match('/\{[\s\S]*\}/', $gptRaw, $matches);
+            $json = json_decode($matches[0] ?? '{}', true);
+
+            return response()->json($json);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'GPT 요청 실패',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
 }

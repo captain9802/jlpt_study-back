@@ -6,6 +6,7 @@ use App\Models\JlptWord;
 use App\Models\UserAiSetting;
 use App\Models\ChatMemory;
 use App\Models\AiPrompt;
+use Illuminate\Support\Facades\Http;
 
 class AiPromptGenerator
 {
@@ -17,45 +18,26 @@ class AiPromptGenerator
             ->where('language', $language)
             ->first();
 
-            $langComment = match ($language) {
-                'jp-only' => "※ 반드시 일본어로만 응답하세요。한국어 사용 금지。질문이 한국어여도 일본어로만 대답하세요。",
-                'ko' => "※ 문장은 일본어로, 해석과 설명은 한국어로 작성하세요。",
-                default => "※ 일본어로 대화하고, 필요 시 한국어 해석을 포함하세요。",
-            };
+        $langComment = match ($language) {
+            'jp-only' => "※ 반드시 일본어로만 응답하세요. 질문이 한국어여도 일본어로만 대답하세요.",
+            'ko' => "※ 일본어 문장을 중심으로, 해석이나 설명은 한국어로 혼합해서 제공하세요.",
+        };
 
-            $systemPrompt = <<<PROMPT
-                                너는 일본어 학습 AI야. 이름은 \"{$settings->name}\"이고, {$settings->personality} 성격, {$settings->tone} 말투, {$settings->voice} 목소리를 사용해.
+        $systemPrompt = <<<PROMPT
+        너는 일본어 학습 AI야. 이름은 "{$settings->name}"이고, {$settings->personality} 성격, {$settings->tone} 말투를 사용해.
 
-                                {$langComment}
+        {$langComment}
+        - 같은 주제는 충분히 이어서 설명
+    PROMPT;
 
-                                - 문장 안에 한국어 설명 섞지 않기
-                                - 자연스럽고 현재형 대화 유지
-                                - 한 주제는 충분히 이어서 설명
-                                - 사용 단어 설명은 아래 JSON 형식으로 제공
-                                - 응답은 JSON 형식으로만 출력
-
-                                JSON 형식:
-                                {
-                                  "text": "일본어 문장",
-                                  "translation": "한국어 해석"
-                                }
-
-                                      여러 문장을 응답할 경우, 반드시 다음과 같은 배열로 감싸서 응답하세요:
-                                    [
-                                      { "text": "...", "translation": "..." },
-                                      { "text": "...", "translation": "..." },
-                                      ...
-                                    ]
-
-                                PROMPT;
-
-            AiPrompt::updateOrCreate(
-                ['user_id' => $userId, 'language' => $language],
-                ['prompt' => $systemPrompt]
-            );
+        AiPrompt::updateOrCreate(
+            ['user_id' => $userId, 'language' => $language],
+            ['prompt' => $systemPrompt]
+        );
 
         return $systemPrompt;
     }
+
 
     public static function getBalancedWords(string $userLevel, int $maxWords = 60): string
     {
@@ -157,5 +139,27 @@ class AiPromptGenerator
                 ->limit($count - 20)
                 ->delete();
         }
+    }
+
+    public static function gptTranslate(string $text): string
+    {
+        $res = Http::withHeaders([
+            'Authorization' => 'Bearer ' . env('OPENAI_API_KEY'),
+        ])->post('https://api.openai.com/v1/chat/completions', [
+            'model' => 'gpt-3.5-turbo',
+            'messages' => [
+                [
+                    'role' => 'system',
+                    'content' => '다음 일본어 문장을 한국어로 자연스럽게 번역해줘.'
+                ],
+                [
+                    'role' => 'user',
+                    'content' => $text
+                ]
+            ],
+            'temperature' => 0.5,
+        ]);
+
+        return $res['choices'][0]['message']['content'] ?? '';
     }
 }
