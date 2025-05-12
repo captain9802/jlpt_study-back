@@ -13,6 +13,7 @@ use App\Models\FavoriteSentenceWord;
 use App\Models\GrammarChoice;
 use App\Models\GrammarExample;
 use App\Models\GrammarQuiz;
+use App\Models\JlptWord;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 
@@ -66,6 +67,7 @@ class FavoriteController extends Controller
 
     public function generateWordQuiz(Request $request)
     {
+        $user = $request->user();
         $validated = $request->validate([
             'list_id' => 'required|integer',
             'order' => 'required|in:default,shuffle',
@@ -78,7 +80,15 @@ class FavoriteController extends Controller
             $words = $words->shuffle()->values();
         }
 
-        $allWords = Favorite::where('list_id', $validated['list_id'])->get();
+        $userLevels = explode(',', $user->jlpt_levels ?? 'N5');
+        $levels = array_map('trim', $userLevels);
+
+        $allWords = JlptWord::where(function ($query) use ($levels) {
+            foreach ($levels as $level) {
+                $query->orWhereJsonContains('levels', $level);
+            }
+        })->get();
+
 
         $quiz = $words->map(function ($word) use ($validated, $allWords) {
             $jp = $word->text;
@@ -95,35 +105,66 @@ class FavoriteController extends Controller
             $question = $mode === 'jp-ko' ? $jp : $ko;
 
             $wrongOptionsRaw = $allWords
-                ->where('id', '!=', $word->id)
-                ->unique($mode === 'jp-ko' ? 'meaning' : 'text')
+                ->unique($mode === 'jp-ko' ? 'meaning_ko' : 'word')
                 ->shuffle()
+                ->filter(fn($item) =>
+                    ($mode === 'jp-ko' ? $item->meaning_ko : $item->word) !== $correctText
+                )
                 ->take(3)
                 ->values();
 
             $wrongOptions = $wrongOptionsRaw->map(function ($item) use ($mode) {
                 return [
-                    'text' => $mode === 'jp-ko' ? $item->meaning : $item->text,
-                    'translation' => $mode === 'jp-ko' ? $item->text : $item->meaning,
+                    'text' => $mode === 'jp-ko' ? $item->meaning_ko : $item->word,
+                    'translation' => $mode === 'jp-ko' ? $item->word : $item->meaning_ko,
+                    'kana' => $item->kana,
                 ];
             })->toArray();
 
-            $options = array_merge([
-                ['text' => $correctText, 'translation' => $correctTranslation]
-            ], $wrongOptions);
+            $options = array_merge([[
+                'text' => $correctText,
+                'translation' => $correctTranslation,
+                'kana' => $word->reading
+            ]], $wrongOptions);
 
             shuffle($options);
             $answerIndex = array_search($correctText, array_column($options, 'text'));
 
             return [
                 'jp' => $question,
+                'kana' => $word->reading,
                 'options' => $options,
                 'answer' => $answerIndex
             ];
         });
-
         return response()->json($quiz->values());
     }
+
+    public function getFavoriteChoices(Request $request)
+    {
+        $user = $request->user();
+        $validated = $request->validate([
+            'count' => 'required|integer|min:1|max:3000',
+        ]);
+        $levels = explode(',', $user->jlpt_levels ?? 'N5');
+
+        $pool = JlptWord::where(function ($query) use ($levels) {
+            foreach ($levels as $level) {
+                $query->orWhereJsonContains('levels', $level);
+            }
+        })
+            ->inRandomOrder()
+            ->limit($validated['count'] * 3)
+            ->select([
+                'word as text',
+                'meaning_ko as meaning',
+                'kana as kana'
+            ])
+            ->get();
+
+        return response()->json($pool);
+    }
+
 
     public function getFavoriteGrammars(Request $request, $listId)
     {

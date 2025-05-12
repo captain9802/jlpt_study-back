@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\FavoriteListController;
+use App\Http\Controllers\JlptWordController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ChatController;
@@ -32,6 +33,8 @@ Route::middleware([\Illuminate\Http\Middleware\HandleCors::class])
             Route::post('/favorites/words/toggle', [FavoriteController::class, 'toggleFavorite']);
 
             Route::post('/quiz/word', [FavoriteController::class, 'generateWordQuiz']);
+            Route::post('/quiz/favorites/choices', [FavoriteController::class, 'getFavoriteChoices']);
+
 
             Route::get('/favorites/grammar-lists', [FavoriteListController::class, 'getGrammarLists']);
             Route::post('/favorites/grammar-lists', [FavoriteListController::class, 'storeGrammarList']);
@@ -55,6 +58,10 @@ Route::middleware([\Illuminate\Http\Middleware\HandleCors::class])
 
             Route::post('/quiz/sentence', [FavoriteController::class, 'generateSentenceQuiz']);
 
+            Route::get('/jlpt_words', [JlptWordController::class, 'getByLevel']);
+
+            Route::post('/quiz/jlpt', [JlptWordController::class, 'getByJlptQuiz']);
+            Route::post('/quiz/jlpt/choices', [JlptWordController::class, 'getChoicePool']);
         });
     });
 

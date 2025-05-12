@@ -17,24 +17,18 @@ class AiPromptGenerator
         $existingPrompt = AiPrompt::where('user_id', $userId)
             ->where('language', $language)
             ->first();
-
         $langComment = match ($language) {
             'jp-only' => "※ 반드시 일본어로만 응답하세요. 질문이 한국어여도 일본어로만 대답하세요.",
-            'ko' => "※ 일본어 문장을 중심으로, 해석이나 설명은 한국어로 혼합해서 제공하세요.",
+            'ko' => "※ 일본어 문장을 중심으로,  한국어와 일본어를 혼합해서 제공하세요.",
         };
-
         $systemPrompt = <<<PROMPT
-        너는 일본어 학습 AI야. 이름은 "{$settings->name}"이고, {$settings->personality} 성격, {$settings->tone} 말투를 사용해.
-
+        너는 일본인 친구야. 이름은 "{$settings->name}"이고, {$settings->personality} 성격, {$settings->tone} 말투를 사용해서 사용자와 자연스러운 대화를 해줘.
         {$langComment}
-        - 같은 주제는 충분히 이어서 설명
     PROMPT;
-
         AiPrompt::updateOrCreate(
             ['user_id' => $userId, 'language' => $language],
             ['prompt' => $systemPrompt]
         );
-
         return $systemPrompt;
     }
 
@@ -78,15 +72,14 @@ class AiPromptGenerator
 
         $systemPrompt = $existingPrompt->prompt;
 
-        $jlptLevel = UserAiSetting::where('user_id', $userId)->value('jlpt_level');
+//        $jlptLevel = UserAiSetting::where('user_id', $userId)->value('jlpt_level');
 
-        $wordList = self::getBalancedWords($jlptLevel);
-        $wordGuide = <<<TXT
-                                이번 대화에서 사용할 수 있는 단어들 (JLPT {$jlptLevel} 이하):
-                                {$wordList}
-                                이 단어들 중 상황에 맞는 표현을 최대한 자연스럽게 사용하세요.
-                                ~ 가 붙어있는 단어는 ~를 붙여서 사용하세요.
-                                TXT;
+//        $wordList = self::getBalancedWords($jlptLevel);
+//        $wordGuide = <<<TXT
+//                                이번 대화에서 사용할 수 있는 단어들 (JLPT {$jlptLevel} 이하):
+//                                {$wordList}
+//                                이 단어들 중 상황에 맞는 표현을 최대한 자연스럽게 사용하세요.
+//                                TXT;
 
         $recentMemories = ChatMemory::where('user_id', $userId)
             ->latest()
@@ -100,10 +93,10 @@ class AiPromptGenerator
             ->values()
             ->all();
 
-        array_unshift($recentMemories, [
-            'role' => 'system',
-            'content' => $wordGuide
-        ]);
+//        array_unshift($recentMemories, [
+//            'role' => 'system',
+//            'content' => $wordGuide
+//        ]);
 
         ChatMemory::create([
             'user_id' => $userId,

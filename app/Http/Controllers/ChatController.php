@@ -16,6 +16,7 @@ class ChatController extends Controller
         $user = $request->user();
         $userMessage = $request->input('message');
         $language = $request->input('language');
+
         if (!isset($language)) {
             return response()->json([
                 'message' => '언어 모드가 설정되지 않았습니다. 설정 후 다시 시도해주세요.',
@@ -29,17 +30,18 @@ class ChatController extends Controller
             'model' => 'gpt-3.5-turbo',
             'messages' => $messages,
         ]);
-        $aiMessage = $response->json('choices.0.message.content');
-        if (!$aiMessage) {
+        $aiText = $response->json('choices.0.message.content');
+        if (!$aiText) {
             return response()->json(['error' => 'GPT 응답 없음'], 500);
         }
-        AiPromptGenerator::saveAssistantResponse($user->id, $aiMessage);
-        $translation = AiPromptGenerator::gptTranslate($aiMessage);
-        $fullResponse = $response->json();
-        $fullResponse['translation'] = $translation;
-
-        return response()->json($fullResponse);
+        $result = [
+            'text' => trim($aiText),
+            'translation' => AiPromptGenerator::gptTranslate($aiText),
+        ];
+        AiPromptGenerator::saveAssistantResponse($user->id, json_encode($result, JSON_UNESCAPED_UNICODE));
+        return response()->json($result);
     }
+
 
     public function saveSummary(Request $request) {
 
@@ -105,10 +107,10 @@ class ChatController extends Controller
                                     - 구조는 아래와 같아야 함:
                                     {
                                       "grammar": [
-                                        { "text": "문법 표현", "meaning": "간결한 뜻" }
+                                        { "text": "문법 표현", "meaning": "간결한 뜻(한국어)" }
                                       ],
                                       "words": [
-                                        { "text": "단어", "reading": "읽는 법", "meaning": "뜻" }
+                                        { "text": "단어", "reading": "히라가나", "meaning": "뜻(한국어)" }
                                       ]
                                     }
                                     SYS
