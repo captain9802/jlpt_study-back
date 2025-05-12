@@ -602,7 +602,6 @@ PROMPT;
                 'temperature' => 0.2,
                 'max_tokens' => 800
             ]);
-
             $gptRaw = $response->json('choices.0.message.content');
             preg_match('/\{[\s\S]*\}/', $gptRaw, $matches);
             $json = json_decode($matches[0] ?? '{}', true);
