@@ -3,11 +3,13 @@
 use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\FavoriteListController;
 use App\Http\Controllers\JlptWordController;
+use App\Http\Controllers\TranslateController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ChatController;
 
 Route::post('/api/login', [UserController::class, 'kakaoLogin']);
+Route::post('/translate', [TranslateController::class, 'translate']);
 
 Route::middleware([\Illuminate\Http\Middleware\HandleCors::class])
     ->prefix('api')
