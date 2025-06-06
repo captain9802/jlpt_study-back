@@ -9,7 +9,6 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\ChatController;
 
 Route::post('/api/login', [UserController::class, 'kakaoLogin']);
-Route::post('/translate', [TranslateController::class, 'translate']);
 
 Route::middleware([\Illuminate\Http\Middleware\HandleCors::class])
     ->prefix('api')
@@ -64,6 +63,8 @@ Route::middleware([\Illuminate\Http\Middleware\HandleCors::class])
 
             Route::post('/quiz/jlpt', [JlptWordController::class, 'getByJlptQuiz']);
             Route::post('/quiz/jlpt/choices', [JlptWordController::class, 'getChoicePool']);
+
+            Route::post('/translate', [TranslateController::class, 'translate']);
         });
     });
 

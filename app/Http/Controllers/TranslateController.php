@@ -1,32 +1,33 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 
 class TranslateController extends Controller
 {
     public function translate(Request $request)
     {
         $text = $request->input('text');
-        $type = $request->input('type', 'sentence');
+        $direction = $request->input('direction', 'ja-ko');
 
         if (!$text) {
             return response()->json(['error' => '문장이 필요합니다.'], 422);
         }
 
-        $cacheKey = "translate:{$type}:" . md5($text);
+        $cacheKey = "translate:{$direction}:" . md5($text);
         if (cache()->has($cacheKey)) {
             return response()->json(cache()->get($cacheKey));
         }
 
-        $systemPrompt = match ($type) {
-            'word' => <<<SYS
-            다음 단어를 번역해줘.
-            - 설명이나 예시 없이 JSON만 출력
-        SYS,
-            'sentence' => <<<SYS
+        $labels = $this->directionLabels($direction);
+
+        $systemPrompt = <<<SYS
             다음 문장을 분석해줘.
-            - 번역, 단어, 문법 정보를 모두 포함
+            - 입력 언어: {$labels['from']}
+            - 출력 언어: {$labels['to']}
+            - 문장을 {$labels['to']}로 번역하고, 단어와 문법도 분석해줘.
             - 반드시 JSON 형식만 출력 (마크다운, 설명 X)
             - 구조는 다음과 같아야 함:
             {
@@ -38,8 +39,7 @@ class TranslateController extends Controller
                 { "text": "단어", "reading": "히라가나", "meaning": "뜻(한국어)" }
               ]
             }
-        SYS
-        };
+        SYS;
 
         $messages = [
             ['role' => 'system', 'content' => $systemPrompt],
@@ -68,18 +68,13 @@ class TranslateController extends Controller
                 ], 500);
             }
 
-            $result = match ($type) {
-                'word' => [
-                    'translation' => $content['translation'] ?? '',
-                ],
-                'sentence' => [
-                    'translation' => $content['translation'] ?? '',
-                    'words' => $content['words'] ?? [],
-                    'explanation' => [
-                        'grammar' => $content['grammar'] ?? [],
-                    ]
+            $result = [
+                'translation' => $content['translation'] ?? '',
+                'words' => $content['words'] ?? [],
+                'explanation' => [
+                    'grammar' => $content['grammar'] ?? [],
                 ]
-            };
+            ];
 
             cache()->put($cacheKey, $result, now()->addMinutes(1));
             return response()->json($result);
@@ -90,5 +85,14 @@ class TranslateController extends Controller
                 'message' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    private function directionLabels(string $direction): array
+    {
+        return match ($direction) {
+            'ja-ko' => ['from' => '일본어', 'to' => '한국어'],
+            'ko-ja' => ['from' => '한국어', 'to' => '일본어'],
+            default => ['from' => '일본어', 'to' => '한국어'],
+        };
     }
 }
