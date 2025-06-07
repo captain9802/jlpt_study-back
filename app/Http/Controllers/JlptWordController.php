@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 
 use App\Models\JlptWord;
 use Illuminate\Http\Request;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 
 class JlptWordController extends Controller
 {
@@ -108,4 +110,17 @@ class JlptWordController extends Controller
         return response()->json($words);
     }
 
+    public function getTodayWord()
+    {
+        $todayKey = 'today_word_' . Carbon::now()->toDateString();
+
+        $word = Cache::remember($todayKey, 60 * 60 * 24, function () {
+            return JlptWord::inRandomOrder()->first(['word', 'kana', 'meaning_ko', 'levels']);
+        });
+
+        return response()->json([
+            'date' => Carbon::now()->toDateString(),
+            'word' => $word
+        ]);
+    }
 }

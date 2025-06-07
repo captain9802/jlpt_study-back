@@ -65,6 +65,7 @@ Route::middleware([\Illuminate\Http\Middleware\HandleCors::class])
             Route::post('/quiz/jlpt/choices', [JlptWordController::class, 'getChoicePool']);
 
             Route::post('/translate', [TranslateController::class, 'translate']);
+            Route::get('/today-word', [JlptWordController::class, 'getTodayWord']);
         });
     });
 
