@@ -110,12 +110,17 @@ class JlptWordController extends Controller
         return response()->json($words);
     }
 
-    public function getTodayWord()
+    public function getTodayWord(Request $request)
     {
-        $todayKey = 'today_word_' . Carbon::now()->toDateString();
+        $user = $request->user();
 
-        $word = Cache::remember($todayKey, 60 * 60 * 24, function () {
-            return JlptWord::inRandomOrder()->first(['word', 'kana', 'meaning_ko', 'levels']);
+        $level = $user->aiSetting->jlpt_level ?? 'N5';
+        $todayKey = 'today_word_' . $user->id . '_' . $level . '_' . Carbon::now()->toDateString();
+
+        $word = Cache::remember($todayKey, 60 * 60 * 24, function () use ($level) {
+            return JlptWord::whereJsonContains('levels', $level)
+                ->inRandomOrder()
+                ->first(['word', 'kana', 'meaning_ko', 'levels']);
         });
 
         return response()->json([

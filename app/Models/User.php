@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Tymon\JWTAuth\Contracts\JWTSubject;
-
+use App\Models\UserAiSetting;
 class User extends Authenticatable implements JWTSubject
 {
     use HasFactory, Notifiable;
@@ -29,5 +29,10 @@ class User extends Authenticatable implements JWTSubject
     public function getJWTCustomClaims()
     {
         return [];
+    }
+
+    public function aiSetting()
+    {
+        return $this->hasOne(UserAiSetting::class, 'user_id');
     }
 }
