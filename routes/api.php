@@ -66,6 +66,9 @@ Route::middleware([\Illuminate\Http\Middleware\HandleCors::class])
 
             Route::post('/translate', [TranslateController::class, 'translate']);
             Route::get('/today-word', [JlptWordController::class, 'getTodayWord']);
+
+            Route::post('/ai-reset', [UserController::class, 'reset']);
+
         });
     });
 

@@ -101,4 +101,17 @@ class UserController extends Controller
         $setting = UserAiSetting::where('user_id', $request->user()->id)->first();
         return response()->json(['data' => $setting]);
     }
+
+    public function reset(Request $request)
+    {
+        $user = $request->user();
+
+        $setting = UserAiSetting::where('user_id', $user->id)->first();
+
+        if ($setting) {
+            $setting->delete();
+        }
+
+        return response()->json(['message' => 'AI 설정이 초기화되었습니다.']);
+    }
 }
