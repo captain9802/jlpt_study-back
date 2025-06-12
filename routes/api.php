@@ -4,6 +4,7 @@ use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\FavoriteListController;
 use App\Http\Controllers\JlptWordController;
 use App\Http\Controllers\TranslateController;
+use App\Http\Controllers\TtsController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ChatController;
@@ -68,7 +69,7 @@ Route::middleware([\Illuminate\Http\Middleware\HandleCors::class])
             Route::get('/today-word', [JlptWordController::class, 'getTodayWord']);
 
             Route::post('/ai-reset', [UserController::class, 'reset']);
-
+            Route::post('/text-sound', [TtsController::class, 'speak']);
         });
     });
 
